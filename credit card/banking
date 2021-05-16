@@ -1,0 +1,163 @@
+# Write your code here
+import random
+import sqlite3
+
+conn = sqlite3.connect('card.s3db')
+cur = conn.cursor()
+cur.execute('create table IF NOT EXISTS card(id INTEGER,number TEXT, pin TEXT, balance INTEGER DEFAULT 0);')
+conn.commit()
+
+
+def create():
+    card_numb, code = card()
+    print("Your card has been created")
+    print('Your card number:')
+    print(card_numb)
+    print("Your card PIN:")
+    print(code)
+    cur.execute("INSERT INTO card(number, pin, balance) VALUES (?,?,?)", (card_numb, code, 0))
+    conn.commit()
+
+
+def log():
+    print("Enter your card number:")
+    c = input()
+    print('Enter your PIN:')
+    p = input()
+    cur.execute('select number,pin from card where number=(?) and pin=(?)', (c, p))
+    account = cur.fetchall()
+    if len(account):
+        print('You have successfully logged in!')
+        while 1 == 1:
+            print('1. Balance')
+            print('2. Add income')
+            print('3. Do transfer')
+            print('4. Close account')
+            print('5. Log out')
+            print('0. Exit')
+            choice = int(input())
+            if choice == 1:
+                balance2 = balance(c)
+                print('Balance: ', balance2)
+            elif choice == 2:
+                add_income(c)
+            elif choice == 3:
+                transfer(c)
+            elif choice == 4:
+                close_account(c)
+            elif choice == 5:
+                break
+            elif choice == 0:
+                print('Bye!')
+                return 0
+        else:
+            print('Wrong card number or PIN!')
+    else:
+        print('Wrong card number or PIN!')
+
+
+def balance(cname):
+    cur.execute("select balance from card where number=(?)", (cname,))
+    balance1 = cur.fetchall()
+    conn.commit()
+    return balance1[0]
+
+
+def add_income(cname):
+    income1 = input('Enter income:')
+    income2 = balance(cname)[0]
+    income3 = str(int(income1) + int(income2))
+    cur.execute("UPDATE card SET balance = (?) WHERE number =(?)", (income3, cname))
+    conn.commit()
+    print('Income was added!')
+
+
+def close_account(cname):
+    cur.execute('DELETE FROM card WHERE number=(?)', (cname,))
+    print('The account has been closed!')
+    conn.commit()
+
+
+def transfer(cname1):
+    cname2 = input('Enter card number:')
+    w = luhn(cname2)
+    if w == False:
+        print('Probably you made a mistake in the card number. Please try again!')
+    else:
+        cur.execute('select number from card where number=(?)', (cname2,))
+        account = cur.fetchall()
+        if len(account):
+            amount = input('Enter how much money you want to transfer:')
+            income_cname1 = balance(cname1)[0]
+            if int(income_cname1) < int(amount):
+                print('Not enough money!')
+            else:
+                income_cname2=balance(cname2)[0]
+                income_cname2 = str(int(income_cname2) + int(amount))
+                income_cname1 = str(int(income_cname1) - int(amount))
+                cur.execute("UPDATE card SET balance = (?) WHERE number =(?)", (income_cname1, cname1))
+                cur.execute("UPDATE card SET balance = (?) WHERE number =(?)", (income_cname2, cname2))
+                print('Success!')
+                conn.commit()
+        else:
+            print('Such a card does not exist.')
+
+
+
+def luhn(cname):
+    a = list(cname)
+    sum1 = 0
+    for i in range(0, 15):
+        if i % 2 == 0:
+            a[i] = str(int(a[i]) * 2)
+    for i in range(0, 15):
+        if int(a[i]) > 9:
+            a[i] = str(int(a[i]) - 9)
+    for i in range(0, 15):
+        sum1 = sum1 + int(a[i])
+    b=sum1+int(a[15])
+    if b % 10 == 0:
+        return True
+    else:
+        return False
+
+
+def card():
+    # luhn algo
+    temp_card_no = '400000' + ''.join(["{}".format(random.randint(0, 9)) for num in range(0, 9)]) + '0'
+    pin = ''.join(["{}".format(random.randint(0, 9)) for num in range(0, 4)])
+    a = list(temp_card_no)
+    sum1 = 0
+    for i in range(0, 15):
+        if i % 2 == 0:
+            a[i] = str(int(a[i]) * 2)
+    for i in range(0, 15):
+        if int(a[i]) > 9:
+            a[i] = str(int(a[i]) - 9)
+    for i in range(0, 15):
+        sum1 = sum1 + int(a[i])
+    for i in range(0, 10):
+        if (sum1 + i) % 10 == 0:
+            a[15] = str(i)
+            break
+    card_no = temp_card_no[0:15] + a[15]
+    return card_no, pin
+
+
+while 1 == 1:
+    print('1. Create an account')
+    print('2. Log into account')
+    print('0. Exit')
+    choice = int(input())
+    if choice == 1:
+        create()
+
+    elif choice == 2:
+        q = log()
+        if q == 0:
+            break
+
+    elif choice == 0:
+        break
+    else:
+        break
